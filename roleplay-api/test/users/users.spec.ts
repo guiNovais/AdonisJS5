@@ -1,8 +1,9 @@
+import Database from '@ioc:Adonis/Lucid/Database'
 import test from 'japa'
 import supertest from 'supertest'
 
 const BASE_URL = `http://${process.env.HOST}:${process.env.PORT}`
-test.group('User', () => {
+test.group('User', (group) => {
   test.only('it should create a user', async (assert) => {
     const userPayload = {
       email: 'test@test.com',
@@ -15,5 +16,13 @@ test.group('User', () => {
     assert.equal(body.user.email, userPayload.email)
     assert.equal(body.user.username, userPayload.username)
     assert.notExists(body.user.password)
+  })
+
+  group.beforeEach(async () => {
+    await Database.beginGlobalTransaction()
+  })
+
+  group.afterEach(async () => {
+    await Database.rollbackGlobalTransaction()
   })
 })
