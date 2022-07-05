@@ -19,12 +19,19 @@ test.group('User', (group) => {
     assert.notExists(body.user.password)
   })
 
-  test('it should return 409 when email is already in use', async () => {
+  test('it should return 409 when email is already in use', async (assert) => {
     const { email } = await UserFactory.create()
-    await supertest(BASE_URL)
+    const { body } = await supertest(BASE_URL)
       .post('/users')
       .send({ email, username: 'test', password: 'test' })
       .expect(409)
+
+    assert.exists(body.message)
+    assert.exists(body.code)
+    assert.exists(body.status)
+    assert.include(body.message, 'email')
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 409)
   })
 
   group.beforeEach(async () => {
