@@ -55,6 +55,26 @@ test.group('User', (group) => {
     assert.equal(body.status, 422)
   })
 
+  test('it should return 422 when providing an invalid email', async (assert) => {
+    const { body } = await supertest(BASE_URL)
+      .post('/users')
+      .send({ email: 'test@', password: 'test', username: 'test' })
+      .expect(422)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
+  })
+
+  test('it should return 422 when providing an invalid password', async (assert) => {
+    const { body } = await supertest(BASE_URL)
+      .post('/users')
+      .send({ email: 'test@text.com', password: 'tes', username: 'test' })
+      .expect(422)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
+  })
+
   group.beforeEach(async () => {
     await Database.beginGlobalTransaction()
   })
