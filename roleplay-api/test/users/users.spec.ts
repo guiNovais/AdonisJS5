@@ -1,3 +1,4 @@
+import Hash from '@ioc:Adonis/Core/Hash'
 import Database from '@ioc:Adonis/Lucid/Database'
 import { UserFactory } from 'Database/factories'
 import test from 'japa'
@@ -73,6 +74,45 @@ test.group('User', (group) => {
 
     assert.equal(body.code, 'BAD_REQUEST')
     assert.equal(body.status, 422)
+  })
+
+  test('it should update an user', async (assert) => {
+    const { id, password } = await UserFactory.create()
+    const email = 'test@test.com'
+    const avatar = 'https://test.com/image/avatar.jpg'
+    const { body } = await supertest(BASE_URL)
+      .put(`/users/${id}/`)
+      .send({
+        email,
+        avatar,
+        password,
+      })
+      .expect(200)
+
+    assert.exists(body.user, 'User undefined')
+    assert.equal(body.user.id, id)
+    assert.equal(body.user.email, email)
+    assert.equal(body.user.avatar, avatar)
+  })
+
+  test('it should update the password of the user', async (assert) => {
+    const user = await UserFactory.create()
+    const password = 'test'
+    const { body } = await supertest(BASE_URL)
+      .put(`/users/${user.id}`)
+      .send({
+        email: user.email,
+        avatar: user.avatar,
+        password: password,
+      })
+      .expect(200)
+
+    assert.exists(body.user.id, 'User undefined')
+    assert.equal(user.id, body.user.id)
+
+    await user.refresh()
+
+    assert.isTrue(await Hash.verify(user.password, password))
   })
 
   group.beforeEach(async () => {
