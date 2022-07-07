@@ -115,6 +115,58 @@ test.group('User', (group) => {
     assert.isTrue(await Hash.verify(user.password, password))
   })
 
+  test('it should return 422 when required data is not provided', async (assert) => {
+    const { id } = await UserFactory.create()
+    const { body } = await supertest(BASE_URL).put(`/users/${id}`).send({}).expect(422)
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
+  })
+
+  test('it should return 422 when providing an invalid email', async (assert) => {
+    const { id, avatar, password } = await UserFactory.create()
+    const { body } = await supertest(BASE_URL)
+      .put(`/users/${id}`)
+      .send({
+        email: 'test@',
+        avatar,
+        password,
+      })
+      .expect(422)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
+  })
+
+  test('it should return 422 when providing an invalid password', async (assert) => {
+    const { id, email, avatar } = await UserFactory.create()
+    const { body } = await supertest(BASE_URL)
+      .put(`/users/${id}`)
+      .send({
+        email,
+        avatar,
+        password: 'tes',
+      })
+      .expect(422)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
+  })
+
+  test('it should return 422 when providing an invalid avatar', async (assert) => {
+    const { id, email, password } = await UserFactory.create()
+    const { body } = await supertest(BASE_URL)
+      .put(`/users/${id}`)
+      .send({
+        email,
+        avatar: 'test',
+        password,
+      })
+      .expect(422)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
+  })
+
   group.beforeEach(async () => {
     await Database.beginGlobalTransaction()
   })
