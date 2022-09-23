@@ -5,6 +5,8 @@ import test from 'japa'
 import supertest from 'supertest'
 
 const BASE_URL = `http://${process.env.HOST}:${process.env.PORT}`
+let token: string
+
 test.group('User', (group) => {
   test('it should create a user', async (assert) => {
     const userPayload = {
@@ -82,6 +84,7 @@ test.group('User', (group) => {
     const avatar = 'https://test.com/image/avatar.jpg'
     const { body } = await supertest(BASE_URL)
       .put(`/users/${id}/`)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         email,
         avatar,
@@ -100,6 +103,7 @@ test.group('User', (group) => {
     const password = 'test'
     const { body } = await supertest(BASE_URL)
       .put(`/users/${user.id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         email: user.email,
         avatar: user.avatar,
@@ -117,7 +121,11 @@ test.group('User', (group) => {
 
   test('it should return 422 when required data is not provided', async (assert) => {
     const { id } = await UserFactory.create()
-    const { body } = await supertest(BASE_URL).put(`/users/${id}`).send({}).expect(422)
+    const { body } = await supertest(BASE_URL)
+      .put(`/users/${id}`)
+      .send({})
+      .expect(422)
+      .set('Authorization', `Bearer ${token}`)
     assert.equal(body.code, 'BAD_REQUEST')
     assert.equal(body.status, 422)
   })
@@ -126,6 +134,7 @@ test.group('User', (group) => {
     const { id, avatar, password } = await UserFactory.create()
     const { body } = await supertest(BASE_URL)
       .put(`/users/${id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         email: 'test@',
         avatar,
@@ -141,6 +150,7 @@ test.group('User', (group) => {
     const { id, email, avatar } = await UserFactory.create()
     const { body } = await supertest(BASE_URL)
       .put(`/users/${id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         email,
         avatar,
@@ -156,6 +166,7 @@ test.group('User', (group) => {
     const { id, email, password } = await UserFactory.create()
     const { body } = await supertest(BASE_URL)
       .put(`/users/${id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         email,
         avatar: 'test',
@@ -167,11 +178,30 @@ test.group('User', (group) => {
     assert.equal(body.status, 422)
   })
 
+  group.before(async () => {
+    const plainPassword = 'pass'
+    const { email } = await UserFactory.merge({ password: plainPassword }).create()
+    const { body } = await supertest(BASE_URL)
+      .post('/sessions')
+      .send({ email, password: plainPassword })
+      .expect(201)
+
+    token = body.token.token
+  })
+
   group.beforeEach(async () => {
     await Database.beginGlobalTransaction()
   })
 
   group.afterEach(async () => {
     await Database.rollbackGlobalTransaction()
+  })
+
+  group.after(async () => {
+    await supertest(BASE_URL)
+      .delete('/sessions')
+      .set('Authorization', `Bearer ${token}`)
+      .send()
+      .expect(200)
   })
 })
