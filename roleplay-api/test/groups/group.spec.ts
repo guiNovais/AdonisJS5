@@ -1,13 +1,15 @@
 import Database from '@ioc:Adonis/Lucid/Database'
+import User from 'App/Models/User'
 import { UserFactory } from 'Database/factories'
 import test from 'japa'
 import supertest from 'supertest'
 
 const BASE_URL = `http://${process.env.HOST}:${process.env.PORT}`
+let token: string
+let user: User
 
 test.group('Group', (group) => {
   test('it should create a group', async (assert) => {
-    const user = await UserFactory.create()
     const groupPayload = {
       name: 'test',
       description: 'test',
@@ -16,7 +18,11 @@ test.group('Group', (group) => {
       chronic: 'test',
       master: user.id,
     }
-    const { body } = await supertest(BASE_URL).post('/groups').send(groupPayload).expect(201)
+    const { body } = await supertest(BASE_URL)
+      .post('/groups')
+      .set('Authorization', `Bearer ${token}`)
+      .send(groupPayload)
+      .expect(201)
 
     assert.exists(body.group, 'Group undefined')
     assert.equal(body.group.name, groupPayload.name)
@@ -31,9 +37,24 @@ test.group('Group', (group) => {
   })
 
   test('it should return 422 when reqired data is not provided', async (assert) => {
-    const { body } = await supertest(BASE_URL).post('/groups').send({}).expect(422)
+    const { body } = await supertest(BASE_URL)
+      .post('/groups')
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(422)
     assert.equal(body.code, 'BAD_REQUEST')
     assert.equal(body.status, 422)
+  })
+
+  group.before(async () => {
+    const plainPassword = 'pass'
+    user = await UserFactory.merge({ password: plainPassword }).create()
+    const { body } = await supertest(BASE_URL)
+      .post('/sessions')
+      .send({ email: user.email, password: plainPassword })
+      .expect(201)
+
+    token = body.token.token
   })
 
   group.beforeEach(async () => {
@@ -42,5 +63,13 @@ test.group('Group', (group) => {
 
   group.afterEach(async () => {
     await Database.rollbackGlobalTransaction()
+  })
+
+  group.after(async () => {
+    await supertest(BASE_URL)
+      .delete('/sessions')
+      .set('Authorization', `Bearer ${token}`)
+      .send()
+      .expect(200)
   })
 })
