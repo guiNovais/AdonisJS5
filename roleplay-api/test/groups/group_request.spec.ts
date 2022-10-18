@@ -43,6 +43,33 @@ test.group('Group Request', (group) => {
     assert.equal(body.status, 409)
   })
 
+  test('it should return 422 when user is already in the group', async (assert) => {
+    const groupPayload = {
+      name: 'test',
+      description: 'test',
+      schedule: 'test',
+      location: 'test',
+      chronic: 'test',
+      master: user.id,
+    }
+
+    // Master is added to group
+    const response = await supertest(BASE_URL)
+      .post('/groups')
+      .set('Authorization', `Bearer ${token}`)
+      .send(groupPayload)
+      .expect(201)
+
+    const { body } = await supertest(BASE_URL)
+      .post(`/groups/${response.body.group.id}/requests`)
+      .set('Authorization', `Bearer ${token}`)
+      .send()
+      .expect(422)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
+  })
+
   group.before(async () => {
     const plainPassword = 'pass'
     user = await UserFactory.merge({ password: plainPassword }).create()
