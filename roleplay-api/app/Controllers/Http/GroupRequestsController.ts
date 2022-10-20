@@ -5,6 +5,23 @@ import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import Group from 'App/Models/Group'
 
 export default class GroupRequestsController {
+  public async index({ request, response }: HttpContextContract) {
+    const { master } = request.qs()
+    const groupRequests = await GroupRequest.query()
+      .select('id', 'userId', 'groupId', 'status')
+      .preload('group', (query) => {
+        query.select('name', 'master')
+      })
+      .preload('user', (query) => {
+        query.select('username')
+      })
+      .whereHas('group', (query) => {
+        query.where('master', master)
+      })
+      .where('status', 'PENDING')
+    return response.ok({ groupRequests })
+  }
+
   public async store({ request, response, auth }: HttpContextContract) {
     const groupId = request.param('groupId') as number
     const userId = auth.user!.id
