@@ -96,6 +96,40 @@ test.group('Group Request', (group) => {
     assert.equal(body.groupRequests[0].group.master, master.id)
   })
 
+  test('it should return an empty list when master has no group requests', async (assert) => {
+    const master = await UserFactory.create()
+    const anotherUser = await UserFactory.create()
+    const group = await GroupFactory.merge({ master: master.id }).create()
+
+    await supertest(BASE_URL)
+      .post(`/groups/${group.id}/requests`)
+      .set('Authorization', `Bearer ${token}`)
+      .send()
+      .expect(201)
+
+    const { body } = await supertest(BASE_URL)
+      .get(`/groups/${group.id}/requests?master=${anotherUser.id}`)
+      .expect(200)
+
+    assert.exists(body.groupRequests, 'GroupRequests undefined')
+    assert.isEmpty(body.groupRequests)
+  })
+
+  test('it should return 422 when master is not provided', async (assert) => {
+    const master = await UserFactory.create()
+    const group = await GroupFactory.merge({ master: master.id }).create()
+
+    await supertest(BASE_URL)
+      .post(`/groups/${group.id}/requests`)
+      .set('Authorization', `Bearer ${token}`)
+      .send()
+      .expect(201)
+
+    const { body } = await supertest(BASE_URL).get(`/groups/${group.id}/requests`).expect(422)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
+  })
   group.before(async () => {
     const plainPassword = 'pass'
     user = await UserFactory.merge({ password: plainPassword }).create()
