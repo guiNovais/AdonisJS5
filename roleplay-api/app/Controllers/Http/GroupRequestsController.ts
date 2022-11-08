@@ -66,4 +66,17 @@ export default class GroupRequestsController {
 
     return response.ok({ groupRequest: updatedGroupRequest })
   }
+
+  public async destroy({ request, response }: HttpContextContract) {
+    const groupId = request.param('groupId')
+    const requestId = request.param('requestId')
+
+    const groupRequest = await GroupRequest.query()
+      .where('id', requestId)
+      .andWhere('groupId', groupId)
+      .firstOrFail()
+
+    await groupRequest.delete()
+    return response.ok({})
+  }
 }
