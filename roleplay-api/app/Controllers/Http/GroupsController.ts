@@ -6,18 +6,36 @@ import CreateGroup from 'App/Validators/CreateGroupValidator'
 
 export default class GroupsController {
   public async index({ request, response }: HttpContextContract) {
-    const { ['user']: userId } = request.qs()
+    const { text, ['user']: userId } = request.qs()
 
     let groups = [] as any
 
-    if (!userId) groups = await Group.query().preload('masterUser').preload('players')
-    else
-      groups = await Group.query()
-        .preload('masterUser')
-        .preload('players')
-        .whereHas('players', (query) => {
-          query.where('id', userId)
-        })
+    if (!userId) {
+      if (!text) groups = await Group.query().preload('masterUser').preload('players')
+      else
+        groups = await Group.query()
+          .preload('masterUser')
+          .preload('players')
+          .where('name', 'LIKE', `%${text}%`)
+          .orWhere('description', 'LIKE', `%${text}%`)
+    } else {
+      if (!text)
+        groups = await Group.query()
+          .preload('masterUser')
+          .preload('players')
+          .whereHas('players', (query) => {
+            query.where('id', userId)
+          })
+      else
+        groups = await Group.query()
+          .preload('masterUser')
+          .preload('players')
+          .whereHas('players', (query) => {
+            query.where('id', userId)
+          })
+          .where('name', 'LIKE', `%${text}%`)
+          .orWhere('description', 'LIKE', `%${text}%`)
+    }
 
     return response.ok({ groups })
   }
