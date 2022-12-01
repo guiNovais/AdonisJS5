@@ -1,10 +1,11 @@
-import { GroupFactory } from './../../database/factories/index'
 import Database from '@ioc:Adonis/Lucid/Database'
+import Group from 'App/Models/Group'
 import User from 'App/Models/User'
 import { UserFactory } from 'Database/factories'
 import test from 'japa'
 import supertest from 'supertest'
-import Group from 'App/Models/Group'
+
+import { GroupFactory } from './../../database/factories/index'
 
 const BASE_URL = `http://${process.env.HOST}:${process.env.PORT}`
 let token: string
@@ -12,6 +13,7 @@ let user: User
 
 test.group('Group', (group) => {
   test('it should create a group', async (assert) => {
+    const user = await UserFactory.create()
     const groupPayload = {
       name: 'test',
       description: 'test',
@@ -49,8 +51,7 @@ test.group('Group', (group) => {
   })
 
   test('it should update a group', async (assert) => {
-    const master = await UserFactory.create()
-    const group = await GroupFactory.merge({ master: master.id }).create()
+    const group = await GroupFactory.merge({ master: user.id }).create()
     const payload = {
       name: 'test',
       description: 'test',
@@ -61,6 +62,7 @@ test.group('Group', (group) => {
 
     const { body } = await supertest(BASE_URL)
       .patch(`/groups/${group.id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send(payload)
       .expect(200)
 
@@ -73,7 +75,11 @@ test.group('Group', (group) => {
   })
 
   test('it should return 404 when providing an unexisting group for update', async (assert) => {
-    const response = await supertest(BASE_URL).patch('/groups/1').send({}).expect(404)
+    const response = await supertest(BASE_URL)
+      .patch('/groups/1')
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(404)
 
     assert.equal(response.body.code, 'BAD_REQUEST')
     assert.equal(response.body.status, 404)
@@ -162,15 +168,31 @@ test.group('Group', (group) => {
     assert.isEmpty(players)
   })
 
+  test('it should return 404 when providing an unexisting group for deletion', async (assert) => {
+    const { body } = await supertest(BASE_URL)
+      .delete('/groups/1')
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(404)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, '404')
+  })
+
   group.before(async () => {
     const plainPassword = 'pass'
-    user = await UserFactory.merge({ password: plainPassword }).create()
+    const newUser = await UserFactory.merge({ password: plainPassword }).create()
     const { body } = await supertest(BASE_URL)
       .post('/sessions')
-      .send({ email: user.email, password: plainPassword })
+      .send({ email: newUser.email, password: plainPassword })
       .expect(201)
 
     token = body.token.token
+    user = newUser
+  })
+
+  group.after(async () => {
+    await supertest(BASE_URL).delete('/sessions').set('Authorization', `Bearer ${token}`)
   })
 
   group.beforeEach(async () => {

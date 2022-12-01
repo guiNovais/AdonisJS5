@@ -1,4 +1,5 @@
 import BadRequest from 'App/Exceptions/BadRequestException'
+
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import Group from 'App/Models/Group'
 import CreateGroup from 'App/Validators/CreateGroupValidator'
@@ -12,11 +13,13 @@ export default class GroupsController {
     return response.created({ group })
   }
 
-  public async update({ request, response }: HttpContextContract) {
+  public async update({ request, response, bouncer }: HttpContextContract) {
     const id = request.param('id')
     const payload = request.all()
-
     const group = await Group.findOrFail(id)
+
+    await bouncer.authorize('updateGroup', group)
+
     const updatedGroup = await group.merge(payload).save()
     return response.ok({ group: updatedGroup })
   }
@@ -32,9 +35,12 @@ export default class GroupsController {
     await group.related('players').detach([playerId])
     return response.ok({})
   }
-  public async destroy({ request, response }: HttpContextContract) {
+
+  public async destroy({ request, response, bouncer }: HttpContextContract) {
     const id = request.param('id')
     const group = await Group.findOrFail(id)
+
+    await bouncer.authorize('deleteGroup', group)
 
     await group.delete()
     return response.ok({})
