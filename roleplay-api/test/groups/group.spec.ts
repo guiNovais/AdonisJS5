@@ -134,6 +134,34 @@ test.group('Group', (group) => {
     assert.isNotEmpty(groupModel.players)
   })
 
+  test('it should remove the group', async (assert) => {
+    const groupPayload = {
+      name: 'test',
+      description: 'test',
+      schedule: 'test',
+      location: 'test',
+      chronic: 'test',
+      master: user.id,
+    }
+    const { body } = await supertest(BASE_URL)
+      .post('/groups')
+      .set('Authorization', `Bearer ${token}`)
+      .send(groupPayload)
+    const group = body.group
+
+    await supertest(BASE_URL)
+      .delete(`/groups/${group.id}`)
+      .send({})
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+
+    const emptyGroup = await Database.query().from('groups').where('id', group.id)
+    assert.isEmpty(emptyGroup)
+
+    const players = await Database.query().from('groups_users')
+    assert.isEmpty(players)
+  })
+
   group.before(async () => {
     const plainPassword = 'pass'
     user = await UserFactory.merge({ password: plainPassword }).create()

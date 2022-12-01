@@ -32,4 +32,11 @@ export default class GroupsController {
     await group.related('players').detach([playerId])
     return response.ok({})
   }
+  public async destroy({ request, response }: HttpContextContract) {
+    const id = request.param('id')
+    const group = await Group.findOrFail(id)
+
+    await group.delete()
+    return response.ok({})
+  }
 }

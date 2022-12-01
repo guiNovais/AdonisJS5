@@ -14,7 +14,13 @@ export default class extends BaseSchema {
       table.timestamp('updated_at', { useTz: true })
 
       table.integer('user_id').unsigned().references('id').inTable('users').notNullable()
-      table.integer('group_id').unsigned().references('id').inTable('groups').notNullable()
+      table
+        .integer('group_id')
+        .unsigned()
+        .references('id')
+        .inTable('groups')
+        .onDelete('CASCADE')
+        .notNullable()
       table.enum('status', ['PENDING', 'ACCEPTED']).defaultTo('PENDING').notNullable()
     })
   }
