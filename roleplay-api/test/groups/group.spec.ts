@@ -4,6 +4,7 @@ import User from 'App/Models/User'
 import { UserFactory } from 'Database/factories'
 import test from 'japa'
 import supertest from 'supertest'
+import Group from 'App/Models/Group'
 
 const BASE_URL = `http://${process.env.HOST}:${process.env.PORT}`
 let token: string
@@ -104,6 +105,33 @@ test.group('Group', (group) => {
 
     await group.load('players')
     assert.isEmpty(group.players)
+  })
+
+  test('it should not remove the master of the group', async (assert) => {
+    const groupPayload = {
+      name: 'test',
+      description: 'test',
+      schedule: 'test',
+      location: 'test',
+      chronic: 'test',
+      master: user.id,
+    }
+
+    const { body } = await supertest(BASE_URL)
+      .post('/groups')
+      .set('Authorization', `Bearer ${token}`)
+      .send(groupPayload)
+
+    const group = body.group
+
+    await supertest(BASE_URL)
+      .delete(`/groups/${group.id}/players/${user.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400)
+
+    const groupModel = await Group.findOrFail(group.id)
+    await groupModel.load('players')
+    assert.isNotEmpty(groupModel.players)
   })
 
   group.before(async () => {
