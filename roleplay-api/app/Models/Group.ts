@@ -3,12 +3,16 @@ import {
   belongsTo,
   BelongsTo,
   column,
-  ManyToMany,
   manyToMany,
+  ManyToMany,
+  ModelQueryBuilderContract,
+  scope,
 } from '@ioc:Adonis/Lucid/Orm'
 import { DateTime } from 'luxon'
 
 import User from './User'
+
+type Builder = ModelQueryBuilderContract<typeof Group>
 
 export default class Group extends BaseModel {
   @column({ isPrimary: true })
@@ -45,4 +49,14 @@ export default class Group extends BaseModel {
     pivotTable: 'groups_users',
   })
   public players: ManyToMany<typeof User>
+
+  public static withPlayer = scope((query: Builder, userId: number) => {
+    query.whereHas('players', (query) => {
+      query.where('id', userId)
+    })
+  })
+
+  public static withText = scope((query: Builder, text: string) => {
+    query.where('name', 'LIKE', `%${text}%`).orWhere('description', 'LIKE', `%${text}%`)
+  })
 }

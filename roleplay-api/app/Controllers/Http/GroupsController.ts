@@ -8,34 +8,7 @@ export default class GroupsController {
   public async index({ request, response }: HttpContextContract) {
     const { text, ['user']: userId } = request.qs()
 
-    let groups = [] as any
-
-    if (!userId) {
-      if (!text) groups = await Group.query().preload('masterUser').preload('players')
-      else
-        groups = await Group.query()
-          .preload('masterUser')
-          .preload('players')
-          .where('name', 'LIKE', `%${text}%`)
-          .orWhere('description', 'LIKE', `%${text}%`)
-    } else {
-      if (!text)
-        groups = await Group.query()
-          .preload('masterUser')
-          .preload('players')
-          .whereHas('players', (query) => {
-            query.where('id', userId)
-          })
-      else
-        groups = await Group.query()
-          .preload('masterUser')
-          .preload('players')
-          .whereHas('players', (query) => {
-            query.where('id', userId)
-          })
-          .where('name', 'LIKE', `%${text}%`)
-          .orWhere('description', 'LIKE', `%${text}%`)
-    }
+    const groups = await this.filterByQueryString(userId, text)
 
     return response.ok({ groups })
   }
@@ -79,5 +52,38 @@ export default class GroupsController {
 
     await group.delete()
     return response.ok({})
+  }
+
+  private filterByQueryString(userId: number, text: string) {
+    if (userId && text) return this.filterByUserAndText(userId, text)
+    else if (userId) return this.filterByUser(userId)
+    else if (text) return this.filterByText(text)
+    else return this.all()
+  }
+
+  private all() {
+    return Group.query().preload('players').preload('masterUser')
+  }
+
+  private filterByUser(userId: number) {
+    return Group.query()
+      .preload('players')
+      .preload('masterUser')
+      .withScopes((scope) => scope.withPlayer(userId))
+  }
+
+  private filterByText(text: string) {
+    return Group.query()
+      .preload('players')
+      .preload('masterUser')
+      .withScopes((scope) => scope.withText(text))
+  }
+
+  private filterByUserAndText(userId: number, text: string) {
+    return Group.query()
+      .preload('players')
+      .preload('masterUser')
+      .withScopes((scope) => scope.withPlayer(userId))
+      .withScopes((scope) => scope.withText(text))
   }
 }
